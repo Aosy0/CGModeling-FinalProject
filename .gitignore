@@ -1,0 +1,14 @@
+# Node.js dependencies
+node_modules
+
+# Build output folder
+dist
+
+# Environment variables
+.env
+.env.*
+
+# IDE and OS specific files
+.DS_Store
+.vscode/
+*.code-workspace
