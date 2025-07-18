@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-
+import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 
 class ThreeJSContainer {
     private scene: THREE.Scene;
@@ -44,14 +44,36 @@ class ThreeJSContainer {
     private createScene = () => {
         this.scene = new THREE.Scene();
 
-        const geometry = new THREE.PlaneGeometry(5, 5);
-        const material = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
-        const plane = new THREE.Mesh(geometry, material);
-        plane.rotation.x = -Math.PI / 2; // 平面を水平にする
-        //plane.position.set(0, -0.01, 0);
+        // 平面を追加
+        const planeGeometry = new THREE.PlaneGeometry(5, 5);
+        const planeMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.rotation.x = -Math.PI / 2;
         this.scene.add(plane);
 
+        new RGBELoader().load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/empty_warehouse_01_1k.hdr', (texture) => {
+            // 読み込んだテクスチャを360度の球状にマッピングする設定
+            texture.mapping = THREE.EquirectangularReflectionMapping;
 
+            // シーンの背景と環境光に設定
+            this.scene.background = texture;
+            this.scene.environment = texture; // これが最も重要！
+        });
+
+        // ガラス球を追加
+        const sphereGeometry = new THREE.SphereGeometry(1, 32, 32);
+        const sphereMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
+            metalness: 0.0,
+            roughness: 0.0,
+            transmission: 1.0,
+            ior: 1.33,
+            thickness: 2.0,
+        });
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        sphere.rotation.x = -Math.PI / 2;
+        sphere.position.set(0, 0, 0);
+        this.scene.add(sphere);
 
         // グリッド表示
         const gridHelper = new THREE.GridHelper(10, 20,);
@@ -82,6 +104,6 @@ window.addEventListener("DOMContentLoaded", init);
 function init() {
     let container = new ThreeJSContainer();
 
-    let viewport = container.createRendererDOM(640, 480, new THREE.Vector3(0, 5, 0));
+    let viewport = container.createRendererDOM(640, 480, new THREE.Vector3(0, 3, 0));
     document.body.appendChild(viewport);
 }
