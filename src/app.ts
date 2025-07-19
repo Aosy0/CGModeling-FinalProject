@@ -81,15 +81,22 @@ class ThreeJSContainer {
             z: 0
         };
 
-        // 平面を追加
+
+        // 平面のテクスチャ切り替え用
         const planeGeometry = new THREE.PlaneGeometry(5, 5);
-        const planeMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+        const loader = new THREE.TextureLoader();
+        const planeTextures = {
+            'DragToMove': loader.load('DragToMove.png'),
+            'Space': loader.load('space.jpeg'),
+            'Dispersion': loader.load('DISPERSION.png')
+        };
+        let planeMaterial = new THREE.MeshBasicMaterial({ map: planeTextures['DragToMove'] });
         const plane = new THREE.Mesh(planeGeometry, planeMaterial);
         plane.rotation.x = -Math.PI / 2;
         this.scene.add(plane);
 
         // シンプルな背景設定
-        this.scene.background = new THREE.Color(0x404040); // ダークグレーの背景
+        this.scene.background = new THREE.Color(0x404040);
         this.scene.environment = null; // 環境光を無効化
 
         // 初期背景の設定完了
@@ -102,9 +109,10 @@ class ThreeJSContainer {
             color: 0xffffff,
             metalness: 0.0,
             roughness: 0.0,
-            transmission: 1.0,
-            ior: 1.33,
-            thickness: 2.0,
+            transmission: 1.3,
+            ior: 1.6,
+            thickness: 1.0,
+            dispersion: 5.0,
         });
 
 
@@ -146,6 +154,31 @@ class ThreeJSContainer {
         // マテリアルパラメータ
         const materialFolder = gui.addFolder('Material');
         materialFolder.add(material, 'roughness', 0.0, 1.0, 0.01).name('Roughness');
+        materialFolder.add(material, 'transmission', 0.0, 1.5, 0.01).name('Transmission');
+        materialFolder.add(material, 'ior', 1.0, 2.5, 0.01).name('IOR');
+        materialFolder.add(material, 'thickness', 0.0, 5.0, 0.01).name('Thickness');
+        materialFolder.add(material, 'dispersion', 0.0, 10.0, 0.01).name('Dispersion');
+        // specularIntensity
+        if ('specularIntensity' in material) {
+            materialFolder.add(material, 'specularIntensity', 0.0, 1.0, 0.01).name('Specular Intensity');
+        }
+        // specularColor
+        if ('specularColor' in material) {
+            const specularColorObj = { color: '#ffffff' };
+            specularColorObj.color = '#' + material.specularColor.getHexString();
+            materialFolder.addColor(specularColorObj, 'color').name('Specular Color').onChange((value: string) => {
+                material.specularColor.set(value);
+            });
+        }
+
+        // 平面テクスチャ切り替え
+        const planeFolder = gui.addFolder('Plane Texture');
+        const planeTextureParams = { texture: 'DragToMove' };
+        planeFolder.add(planeTextureParams, 'texture', ['DragToMove', 'Space', 'Dispersion']).name('Texture').onChange((value: string) => {
+            planeMaterial.map = planeTextures[value];
+            planeMaterial.needsUpdate = true;
+        });
+        planeFolder.open();
 
         // 位置フォルダー
         const positionFolder = gui.addFolder('Position');
