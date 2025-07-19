@@ -110,7 +110,7 @@ class ThreeJSContainer {
             metalness: 0.0,
             roughness: 0.0,
             transmission: 1.3,
-            ior: 1.6,
+            ior: 1.33,
             thickness: 1.0,
             dispersion: 5.0,
         });
