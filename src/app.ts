@@ -68,8 +68,8 @@ class ThreeJSContainer {
 
         // 形状パラメータ
         let shapeParams = {
-            radius: 0.1,
-            length: 2,
+            thickness: 0.1,
+            radius: 1,
             capSegments: 32,
             radialSegments: 64
         };
@@ -95,7 +95,7 @@ class ThreeJSContainer {
         // 初期背景の設定完了
 
         // ジオメトリの生成
-        const diskGeometry = this.creatediskGeometry(shapeParams.radius, shapeParams.length, shapeParams.capSegments, shapeParams.radialSegments);
+        const diskGeometry = this.creatediskGeometry(shapeParams.thickness, shapeParams.radius, shapeParams.capSegments, shapeParams.radialSegments);
 
         // マテリアルの設定
         const material = new THREE.MeshPhysicalMaterial({
@@ -129,8 +129,8 @@ class ThreeJSContainer {
         // ジオメトリの更新関数
         const updateGeometry = () => {
             const newGeometry = this.creatediskGeometry(
+                shapeParams.thickness,
                 shapeParams.radius,
-                shapeParams.length,
                 shapeParams.capSegments,
                 shapeParams.radialSegments
             );
@@ -138,18 +138,23 @@ class ThreeJSContainer {
             diskMesh.geometry = newGeometry;
         };
 
-        shapeFolder.add(shapeParams, 'radius', 0.01, 0.5, 0.01).name('Radius').onChange(updateGeometry);
-        shapeFolder.add(shapeParams, 'length', 0.5, 5.0, 0.1).name('Length').onChange(updateGeometry);
+        shapeFolder.add(shapeParams, 'thickness', 0.01, 0.5, 0.01).name('Thickness').onChange(updateGeometry);
+        shapeFolder.add(shapeParams, 'radius', 0.5, 5.0, 0.1).name('Radius').onChange(updateGeometry);
         shapeFolder.add(shapeParams, 'capSegments', 8, 64, 1).name('Cap Segments').onChange(updateGeometry);
         shapeFolder.add(shapeParams, 'radialSegments', 16, 128, 1).name('Radial Segments').onChange(updateGeometry);
 
+        // マテリアルパラメータ
+        const materialFolder = gui.addFolder('Material');
+        materialFolder.add(material, 'roughness', 0.0, 1.0, 0.01).name('Roughness');
+
         // 位置フォルダー
         const positionFolder = gui.addFolder('Position');
-        positionFolder.add(positionParams, 'y', -2, 5, 0.1).name('Y').onChange((value: number) => {
+        positionFolder.add(positionParams, 'y', 0, 1.5, 0.1).name('Y').onChange((value: number) => {
             diskMesh.position.y = value;
         });
 
         shapeFolder.open();
+        materialFolder.open();
         positionFolder.open();
 
 
