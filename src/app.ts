@@ -2,11 +2,14 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { DragControls } from "three/examples/jsm/controls/DragControls";
 import GUI from 'lil-gui';
+import * as CANNON from 'cannon-es';
 
 class ThreeJSContainer {
     private scene: THREE.Scene;
     //private renderer: THREE.WebGLRenderer;
     private light: THREE.Light;
+    private isDragging: boolean = false;
+    private physicsEnabled: boolean = true;
 
     constructor() {
 
@@ -35,13 +38,24 @@ class ThreeJSContainer {
         // DragControlsの設定
         const dragControls = new DragControls(draggableObjects, camera, renderer.domElement);
 
-        // ドラッグ中はOrbitControlsを無効にする
-        dragControls.addEventListener('dragstart', () => {
+        // ドラッグ中はOrbitControlsを無効にし、物理同期を止める
+        dragControls.addEventListener('dragstart', (event) => {
             orbitControls.enabled = false;
+            this.isDragging = true;
         });
 
-        dragControls.addEventListener('dragend', () => {
+        dragControls.addEventListener('dragend', (event) => {
             orbitControls.enabled = true;
+            this.isDragging = false;
+            // diskMeshに対応する物理ボディを更新
+            if (event.object && event.object.userData && event.object.userData.diskBody) {
+                const mesh = event.object;
+                const body = mesh.userData.diskBody;
+                body.position.set(mesh.position.x, mesh.position.y, mesh.position.z);
+                body.quaternion.set(mesh.quaternion.x, mesh.quaternion.y, mesh.quaternion.z, mesh.quaternion.w);
+                body.velocity.set(0, 0, 0);
+                body.angularVelocity.set(0, 0, 0);
+            }
         });
 
 
@@ -65,6 +79,17 @@ class ThreeJSContainer {
         this.scene = new THREE.Scene();
 
         let gui = new GUI(); // GUI用のインスタンスの生成
+
+        // 物理演算有効/無効トグル
+        const params = { physicsEnabled: this.physicsEnabled };
+        const physicsFolder = gui.addFolder('Physics');
+        physicsFolder.add(params, 'physicsEnabled').name('Enable Physics').onChange((v: boolean) => {
+            this.physicsEnabled = v;
+        });
+        physicsFolder.open();
+        const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.82, 0) });
+        world.defaultContactMaterial.friction = 0.3;
+        world.defaultContactMaterial.restitution = 0.0;
 
         // 形状パラメータ
         let shapeParams = {
@@ -95,6 +120,15 @@ class ThreeJSContainer {
         plane.rotation.x = -Math.PI / 2;
         this.scene.add(plane);
 
+        // 物理演算の空間にも平面を作成
+        const planeShape = new CANNON.Plane();
+        const planeBody = new CANNON.Body({ mass: 0 });
+        planeBody.addShape(planeShape);
+        planeBody.position.set(plane.position.x, plane.position.y, plane.position.z);
+        planeBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+        world.addBody(planeBody);
+
+
         // シンプルな背景設定
         this.scene.background = new THREE.Color(0x404040);
         this.scene.environment = null; // 環境光を無効化
@@ -121,9 +155,17 @@ class ThreeJSContainer {
         //diskMesh.castShadow = true; // 影を落とす
         //diskMesh.receiveShadow = true; // 影を受ける
         diskMesh.position.set(positionParams.x, positionParams.y, positionParams.z); // パラメータから位置を設定
-
-
         this.scene.add(diskMesh);
+
+        // 物理演算の空間にもディスクを作成
+        const diskShape = new CANNON.Cylinder(shapeParams.radius, shapeParams.radius, shapeParams.thickness, shapeParams.capSegments);
+        const diskBody = new CANNON.Body({ mass: 1 });
+        diskBody.addShape(diskShape);
+        diskBody.position.set(positionParams.x, positionParams.y, positionParams.z);
+        world.addBody(diskBody);
+
+        // diskMeshとdiskBodyを紐付け
+        diskMesh.userData.diskBody = diskBody;
 
         // diskMeshをドラッグ可能なオブジェクトに追加
         if (draggableObjects) {
@@ -217,7 +259,17 @@ class ThreeJSContainer {
         this.scene.add(fillLight);
 
         let update: FrameRequestCallback = (time) => {
+            if (this.physicsEnabled) {
+                world.fixedStep();
+                planeBody.position.set(plane.position.x, plane.position.y, plane.position.z);
+                planeBody.quaternion.set(plane.quaternion.x, plane.quaternion.y, plane.quaternion.z, plane.quaternion.w);
 
+                // ドラッグ中でなければ物理→Three.js同期
+                if (!this.isDragging) {
+                    diskMesh.position.set(diskBody.position.x, diskBody.position.y, diskBody.position.z);
+                    diskMesh.quaternion.set(diskBody.quaternion.x, diskBody.quaternion.y, diskBody.quaternion.z, diskBody.quaternion.w);
+                }
+            }
             requestAnimationFrame(update);
         }
         requestAnimationFrame(update);
