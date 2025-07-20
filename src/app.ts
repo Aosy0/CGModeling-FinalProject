@@ -157,7 +157,7 @@ class ThreeJSContainer {
         diskMesh.position.set(positionParams.x, positionParams.y, positionParams.z); // パラメータから位置を設定
         this.scene.add(diskMesh);
 
-        // 物理演算の空間にもディスクを作成
+        // 物理演算の空間では円柱で代用
         const diskShape = new CANNON.Cylinder(shapeParams.radius, shapeParams.radius, shapeParams.thickness, shapeParams.capSegments);
         const diskBody = new CANNON.Body({ mass: 1 });
         diskBody.addShape(diskShape);
@@ -178,6 +178,7 @@ class ThreeJSContainer {
 
         // ジオメトリの更新関数
         const updateGeometry = () => {
+            // diskMeshのジオメトリを更新
             const newGeometry = this.creatediskGeometry(
                 shapeParams.thickness,
                 shapeParams.radius,
@@ -186,6 +187,28 @@ class ThreeJSContainer {
             );
             diskMesh.geometry.dispose(); // 古いジオメトリを削除
             diskMesh.geometry = newGeometry;
+
+            // diskBodyのShapeも更新
+            if (diskMesh.userData.diskBody) {
+                const body = diskMesh.userData.diskBody;
+                // 既存のShapeをすべて削除
+                while (body.shapes.length > 0) {
+                    body.removeShape(body.shapes[0]);
+                }
+                // 新しいShapeを追加
+                const newShape = new CANNON.Cylinder(
+                    shapeParams.radius,
+                    shapeParams.radius,
+                    shapeParams.thickness + shapeParams.thickness * 1,
+                    shapeParams.capSegments
+                );
+                body.addShape(newShape);
+                // 位置・回転を維持
+                body.position.set(diskMesh.position.x, diskMesh.position.y, diskMesh.position.z);
+                body.quaternion.set(diskMesh.quaternion.x, diskMesh.quaternion.y, diskMesh.quaternion.z, diskMesh.quaternion.w);
+                body.velocity.set(0, 0, 0);
+                body.angularVelocity.set(0, 0, 0);
+            }
         };
 
         shapeFolder.add(shapeParams, 'thickness', 0.01, 0.5, 0.01).name('Thickness').onChange(updateGeometry);
